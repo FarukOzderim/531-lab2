@@ -46,6 +46,16 @@ int main(int argc, char** argv) {
     myEnd = std::min(myStart + base, n);
 
     for (int k = 0; k < n; ++k){
+        MPI_Bcast(d + (k)*n, n, MPI_UINT8_T, k/base, MPI_COMM_WORLD);
+        for (int i = myStart; i < myEnd; ++i) 
+            for (int j = 0; j < n; ++j) 
+                if ((w = d[i * n + k] + d[k * n + j]) < d[i * n + j]) 
+                    d[i * n + j] = w;
+    }
+
+
+/*
+    for (int k = 0; k < n; ++k){
         MPI_Bcast(d + (k)*n, n/2, MPI_UINT8_T, k/base, MPI_COMM_WORLD);
         for (int i = myStart; i < myEnd; ++i) 
             for (int j = 0; j < n/2; ++j) 
@@ -57,6 +67,7 @@ int main(int argc, char** argv) {
                 if ((w = d[i * n + k] + d[k * n + j]) < d[i * n + j]) 
                     d[i * n + j] = w;
     }
+*/
     
     if(0 == myRank){
         for(int rank = 1; rank<size; rank++){
