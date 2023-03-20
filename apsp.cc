@@ -3,6 +3,7 @@
 #include <mpi.h>
 #include <assert.h>
 #include <cstdint>
+#include <algorithm>
 
 #define INF 200
 
