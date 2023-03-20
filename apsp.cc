@@ -18,6 +18,8 @@ int main(int argc, char** argv) {
     uint8_t *d;
     MPI_Status statuses[n];
     MPI_Request requests[n];
+    MPI_Request req1;
+    MPI_Request req2;
     int starts[n];
     int ends[n];
 
@@ -45,29 +47,44 @@ int main(int argc, char** argv) {
     myStart = myRank*base;
     myEnd = std::min(myStart + base, n);
 
-    for (int k = 0; k < n; ++k){
-        MPI_Bcast(d + (k)*n, n, MPI_UINT8_T, k/base, MPI_COMM_WORLD);
-        for (int i = myStart; i < myEnd; ++i) 
-            for (int j = 0; j < n; ++j) 
-                if ((w = d[i * n + k] + d[k * n + j]) < d[i * n + j]) 
-                    d[i * n + j] = w;
-    }
-
-
-/*
-    for (int k = 0; k < n; ++k){
-        MPI_Bcast(d + (k)*n, n/2, MPI_UINT8_T, k/base, MPI_COMM_WORLD);
+    k=0;
+    for (int i = myStart; i < myEnd; ++i) 
+        for (int j = 0; j < n/2; ++j) 
+            if ((w = d[i * n + k] + d[k * n + j]) < d[i * n + j]) 
+                d[i * n + j] = w;
+    MPI_Ibcast(d + (k+1)*n, n/2, MPI_UINT8_T, (k+1)/base, MPI_COMM_WORLD, &req1);
+    for (int i = myStart; i < myEnd; ++i) 
+        for (int j = n/2; j < n; ++j) 
+            if ((w = d[i * n + k] + d[k * n + j]) < d[i * n + j]) 
+                d[i * n + j] = w;
+    
+    for (k = 1; k < n-1; ++k){
+        MPI_Ibcast(d + (k)*n + n/2, n-n/2, MPI_UINT8_T, (k)/base, MPI_COMM_WORLD, &req2);
+        MPI_Wait(&req1, MPI_STATUS_IGNORE);
         for (int i = myStart; i < myEnd; ++i) 
             for (int j = 0; j < n/2; ++j) 
                 if ((w = d[i * n + k] + d[k * n + j]) < d[i * n + j]) 
                     d[i * n + j] = w;
-        MPI_Bcast(d + (k)*n + n/2, n-n/2, MPI_UINT8_T, k/base, MPI_COMM_WORLD);
+        MPI_Ibcast(d + (k+1)*n, n/2, MPI_UINT8_T, (k+1)/base, MPI_COMM_WORLD, &req1);
+        MPI_Wait(&req2, MPI_STATUS_IGNORE);
         for (int i = myStart; i < myEnd; ++i) 
             for (int j = n/2; j < n; ++j) 
                 if ((w = d[i * n + k] + d[k * n + j]) < d[i * n + j]) 
                     d[i * n + j] = w;
     }
-*/
+    k=n-1;
+    MPI_Ibcast(d + (k)*n + n/2, n-n/2, MPI_UINT8_T, (k)/base, MPI_COMM_WORLD, &req2);
+    MPI_Wait(&req1, MPI_STATUS_IGNORE);
+    for (int i = myStart; i < myEnd; ++i) 
+        for (int j = 0; j < n/2; ++j) 
+            if ((w = d[i * n + k] + d[k * n + j]) < d[i * n + j]) 
+                d[i * n + j] = w;
+    MPI_Wait(&req2, MPI_STATUS_IGNORE);
+    for (int i = myStart; i < myEnd; ++i) 
+        for (int j = n/2; j < n; ++j) 
+            if ((w = d[i * n + k] + d[k * n + j]) < d[i * n + j]) 
+                d[i * n + j] = w;
+
     
     if(0 == myRank){
         for(int rank = 1; rank<size; rank++){
