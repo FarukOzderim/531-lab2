@@ -16,13 +16,7 @@ int main(int argc, char** argv) {
     
     int n, m, w, k, base, myStart, myEnd;
     uint8_t *d;
-    MPI_Status statuses[n];
-    MPI_Request requests[n];
-    MPI_Request req1;
-    MPI_Request req2;
-    int starts[n];
-    int ends[n];
-
+    
     if(0 == myRank){
         int a,b;
         FILE *infile = fopen(argv[1], "r");
@@ -43,6 +37,12 @@ int main(int argc, char** argv) {
     }
     MPI_Bcast(d, n*n, MPI_UINT8_T, 0, MPI_COMM_WORLD);
     
+    MPI_Request requests[n];
+    MPI_Request req1;
+    MPI_Request req2;
+    int starts[n];
+    int ends[n];
+
     base = (n+size-1)/size;
     myStart = myRank*base;
     myEnd = std::min(myStart + base, n);
@@ -97,8 +97,8 @@ int main(int argc, char** argv) {
     MPI_Barrier(MPI_COMM_WORLD);
 
     if(0 != myRank){
-        MPI_Isend(d + (myStart)*n, (myEnd-myStart)*n, MPI_UINT8_T, 0, 2*n, MPI_COMM_WORLD, &requests[myRank]);
-        MPI_Wait(&requests[myRank], &statuses[myRank]);
+        MPI_Isend(d + (myStart)*n, (myEnd-myStart)*n, MPI_UINT8_T, 0, 2*n, MPI_COMM_WORLD, &req1);
+        MPI_Wait(&req1, MPI_STATUS_IGNORE);
     }  
     
     if(0 == myRank){
@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
                     );
 
         for (int rank = 1; rank<size; rank++){
-            MPI_Wait(&requests[rank], &statuses[rank]);
+            MPI_Wait(&requests[rank], MPI_STATUS_IGNORE);
             for (int i = starts[rank]; i < ends[rank]; ++i) 
                 for (int j = 0; j < n; ++j) 
                     fprintf(outfile, "%d%s",
