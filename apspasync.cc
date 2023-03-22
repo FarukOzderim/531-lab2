@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <cstdint>
 #include <algorithm>
+#include <cstring>
 
 #define INF 200
 #define ALIGNMENT 8
@@ -53,7 +54,7 @@ int main(int argc, char** argv) {
     MPI_Scatterv(d, lengths, starts, MPI_UINT8_T, local, lengths[myRank], MPI_UINT8_T, 0, MPI_COMM_WORLD);
     
     if(0 == myRank){
-        memcpy(kth, local, n);
+        std::memcpy(kth, local, n);
     }
 
     k=0;
@@ -62,40 +63,44 @@ int main(int argc, char** argv) {
     
     for (; k < n-1; ++k){
         if((k)/base == myRank){
-            memcpy(kth+n/2, local + (k - myStart)*n + n/2, n-n/2);
+            std::memcpy(kth+n/2, local + (k - myStart)*n + n/2, n-n/2);
         }
         MPI_Ibcast(kth + n/2, n-n/2, MPI_UINT8_T, k/base, MPI_COMM_WORLD, &req2);
         
         MPI_Wait(&req1, MPI_STATUS_IGNORE);
         for (int i = myStart; i < myEnd; ++i) 
             for (int j = 0; j < n/2; ++j) 
-                if ((w = d[i * n + k] + d[k * n + j]) < d[i * n + j]) 
-                    d[i * n + j] = w;
+                if ((w = local[(i-myStart)*n + k] + kth[j]) < local[(i-myStart)*n + j]) 
+                    local[(i-myStart)*n + j] = w;
         
         if((k+1)/base == myRank){
-            memcpy(kth, local + (k+1 - myStart)*n, n/2);
+            std::memcpy(kth, local + (k+1 - myStart)*n, n/2);
         }
         MPI_Ibcast(kth, n/2, MPI_UINT8_T, (k+1)/base, MPI_COMM_WORLD, &req1);
 
         MPI_Wait(&req2, MPI_STATUS_IGNORE);
         for (int i = myStart; i < myEnd; ++i) 
             for (int j = n/2; j < n; ++j) 
-                if ((w = d[i * n + k] + d[k * n + j]) < d[i * n + j]) 
-                    d[i * n + j] = w;
+                if ((w = local[(i-myStart)*n + k] + kth[j]) < local[(i-myStart)*n + j]) 
+                    local[(i-myStart)*n + j] = w;
     }
-    printf("Before gatherv\n");
 
+    if((k)/base == myRank){
+        std::memcpy(kth+n/2, local + (k - myStart)*n + n/2, n-n/2);
+    }
     MPI_Ibcast(kth + n/2, n-n/2, MPI_UINT8_T, (k)/base, MPI_COMM_WORLD, &req2);
+    
     MPI_Wait(&req1, MPI_STATUS_IGNORE);
     for (int i = myStart; i < myEnd; ++i) 
         for (int j = 0; j < n/2; ++j) 
-            if ((w = d[i * n + k] + d[k * n + j]) < d[i * n + j]) 
-                d[i * n + j] = w;
+            if ((w = local[(i-myStart)*n + k] + kth[j]) < local[(i-myStart)*n + j]) 
+                local[(i-myStart)*n + j] = w;
+    
     MPI_Wait(&req2, MPI_STATUS_IGNORE);
     for (int i = myStart; i < myEnd; ++i) 
         for (int j = n/2; j < n; ++j) 
-            if ((w = d[i * n + k] + d[k * n + j]) < d[i * n + j]) 
-                d[i * n + j] = w;
+            if ((w = local[(i-myStart)*n + k] + kth[j]) < local[(i-myStart)*n + j]) 
+                local[(i-myStart)*n + j] = w;
 
 
     MPI_Gatherv(local, lengths[myRank], MPI_UINT8_T, d, lengths, starts, MPI_UINT8_T, 0, MPI_COMM_WORLD);
@@ -111,7 +116,6 @@ int main(int argc, char** argv) {
         }
         free(d);
     }
-    MPI_Barrier(MPI_COMM_WORLD);
     free(local);
     free(kth);
     MPI_Finalize();
