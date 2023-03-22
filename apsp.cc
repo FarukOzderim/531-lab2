@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
         MPI_Ibcast(kth + n/2, n-n/2, MPI_UINT8_T, k/base, MPI_COMM_WORLD, &req2);
         
         MPI_Wait(&req1, MPI_STATUS_IGNORE);
-        #pragma omp parallel for schedule(static,8) collapse(2)
+        #pragma omp parallel for schedule(static,64) collapse(2)
         for (int i = myStart; i < myEnd; ++i) {
             for (int j = 0; j < n/2; ++j) {
                 int w;
@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
         MPI_Ibcast(kth, n/2, MPI_UINT8_T, (k+1)/base, MPI_COMM_WORLD, &req1);
 
         MPI_Wait(&req2, MPI_STATUS_IGNORE);
-        #pragma omp parallel for schedule(static,8) collapse(2)
+        #pragma omp parallel for schedule(static,64) collapse(2)
         for (int i = myStart; i < myEnd; ++i) {
             for (int j = n/2; j < n; ++j) {
                 int w;
@@ -98,7 +98,7 @@ int main(int argc, char** argv) {
     MPI_Ibcast(kth + n/2, n-n/2, MPI_UINT8_T, (k)/base, MPI_COMM_WORLD, &req2);
     
     MPI_Wait(&req1, MPI_STATUS_IGNORE);
-    #pragma omp parallel for schedule(static,8) collapse(2)
+    #pragma omp parallel for schedule(static,64) collapse(2)
         for (int i = myStart; i < myEnd; ++i) {
             for (int j = 0; j < n/2; ++j) {
                 int w;
@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
     }
         
     MPI_Wait(&req2, MPI_STATUS_IGNORE);
-    #pragma omp parallel for schedule(static,8) collapse(2)
+    #pragma omp parallel for schedule(static,64) collapse(2)
         for (int i = myStart; i < myEnd; ++i) {
             for (int j = n/2; j < n; ++j) {
                 int w;
