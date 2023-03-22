@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
     
-    int n, m, w, k, base, myStart, myEnd;
+    int n, m, k, base, myStart, myEnd;
     uint8_t *d, *local, *kth;
     MPI_Request req1;
     MPI_Request req2;
@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
     int lengths[size];
 
     if(0 == myRank){
-        int a,b;
+        int a,b,w;
         FILE *infile = fopen(argv[1], "r");
         fscanf(infile, "%d %d", &n, &m);
         d = (uint8_t *) aligned_alloc(ALIGNMENT, sizeof(uint8_t) * n * n);
@@ -68,21 +68,28 @@ int main(int argc, char** argv) {
         MPI_Ibcast(kth + n/2, n-n/2, MPI_UINT8_T, k/base, MPI_COMM_WORLD, &req2);
         
         MPI_Wait(&req1, MPI_STATUS_IGNORE);
-        for (int i = myStart; i < myEnd; ++i) 
-            for (int j = 0; j < n/2; ++j) 
+        #pragma omp parallel for schedule(static,8) collapse(2)
+        for (int i = myStart; i < myEnd; ++i) {
+            for (int j = 0; j < n/2; ++j) {
+                int w;
                 if ((w = local[(i-myStart)*n + k] + kth[j]) < local[(i-myStart)*n + j]) 
                     local[(i-myStart)*n + j] = w;
-        
+            }
+        }
         if((k+1)/base == myRank){
             std::memcpy(kth, local + (k+1 - myStart)*n, n/2);
         }
         MPI_Ibcast(kth, n/2, MPI_UINT8_T, (k+1)/base, MPI_COMM_WORLD, &req1);
 
         MPI_Wait(&req2, MPI_STATUS_IGNORE);
-        for (int i = myStart; i < myEnd; ++i) 
-            for (int j = n/2; j < n; ++j) 
+        #pragma omp parallel for schedule(static,8) collapse(2)
+        for (int i = myStart; i < myEnd; ++i) {
+            for (int j = n/2; j < n; ++j) {
+                int w;
                 if ((w = local[(i-myStart)*n + k] + kth[j]) < local[(i-myStart)*n + j]) 
                     local[(i-myStart)*n + j] = w;
+            }
+        }
     }
 
     if((k)/base == myRank){
@@ -91,17 +98,25 @@ int main(int argc, char** argv) {
     MPI_Ibcast(kth + n/2, n-n/2, MPI_UINT8_T, (k)/base, MPI_COMM_WORLD, &req2);
     
     MPI_Wait(&req1, MPI_STATUS_IGNORE);
-    for (int i = myStart; i < myEnd; ++i) 
-        for (int j = 0; j < n/2; ++j) 
-            if ((w = local[(i-myStart)*n + k] + kth[j]) < local[(i-myStart)*n + j]) 
-                local[(i-myStart)*n + j] = w;
-    
+    #pragma omp parallel for schedule(static,8) collapse(2)
+        for (int i = myStart; i < myEnd; ++i) {
+            for (int j = 0; j < n/2; ++j) {
+                int w;
+                if ((w = local[(i-myStart)*n + k] + kth[j]) < local[(i-myStart)*n + j]) 
+                    local[(i-myStart)*n + j] = w;
+        }
+    }
+        
     MPI_Wait(&req2, MPI_STATUS_IGNORE);
-    for (int i = myStart; i < myEnd; ++i) 
-        for (int j = n/2; j < n; ++j) 
-            if ((w = local[(i-myStart)*n + k] + kth[j]) < local[(i-myStart)*n + j]) 
-                local[(i-myStart)*n + j] = w;
-
+    #pragma omp parallel for schedule(static,8) collapse(2)
+        for (int i = myStart; i < myEnd; ++i) {
+            for (int j = n/2; j < n; ++j) {
+                int w;
+                if ((w = local[(i-myStart)*n + k] + kth[j]) < local[(i-myStart)*n + j]) 
+                    local[(i-myStart)*n + j] = w;
+        }
+    }
+        
 
 
 
