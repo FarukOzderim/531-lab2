@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <cstdint>
 #include <algorithm>
+#include <cstring>
 
 #define INF 200
 #define ALIGNMENT 8
@@ -53,7 +54,7 @@ int main(int argc, char** argv) {
     MPI_Scatterv(d, lengths, starts, MPI_UINT8_T, local, lengths[myRank], MPI_UINT8_T, 0, MPI_COMM_WORLD);
     
     if(0 == myRank){
-        memcpy(kth, local, n);
+        std::memcpy(kth, local, n);
     }
 
     k=0;
@@ -62,7 +63,7 @@ int main(int argc, char** argv) {
     
     for (; k < n-1; ++k){
         if((k)/base == myRank){
-            memcpy(kth+n/2, local + (k - myStart)*n + n/2, n-n/2);
+            std::memcpy(kth+n/2, local + (k - myStart)*n + n/2, n-n/2);
         }
         MPI_Ibcast(kth + n/2, n-n/2, MPI_UINT8_T, k/base, MPI_COMM_WORLD, &req2);
         
@@ -73,7 +74,7 @@ int main(int argc, char** argv) {
                     local[(i-myStart)*n + j] = w;
         
         if((k+1)/base == myRank){
-            memcpy(kth, local + (k+1 - myStart)*n, n/2);
+            std::memcpy(kth, local + (k+1 - myStart)*n, n/2);
         }
         MPI_Ibcast(kth, n/2, MPI_UINT8_T, (k+1)/base, MPI_COMM_WORLD, &req1);
 
@@ -85,7 +86,7 @@ int main(int argc, char** argv) {
     }
 
     if((k)/base == myRank){
-        memcpy(kth+n/2, local + (k - myStart)*n + n/2, n-n/2);
+        std::memcpy(kth+n/2, local + (k - myStart)*n + n/2, n-n/2);
     }
     MPI_Ibcast(kth + n/2, n-n/2, MPI_UINT8_T, (k)/base, MPI_COMM_WORLD, &req2);
     
