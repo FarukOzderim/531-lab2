@@ -103,16 +103,42 @@ int main(int argc, char** argv) {
                 local[(i-myStart)*n + j] = w;
 
 
-    MPI_Gatherv(local, lengths[myRank], MPI_UINT8_T, d, lengths, starts, MPI_UINT8_T, 0, MPI_COMM_WORLD);
+
+
+    
+        
+    if(0 == myRank){
+        for(int rank = 1; rank<size; rank++){
+            MPI_Irecv(d + (starts[rank]), (ends[rank]-starts[rank]), MPI_UINT8_T, rank, 2*n, MPI_COMM_WORLD, &requests[rank]);
+        }   
+    }
+    //This way we won't do copy after Irecv as it will directly write it to d
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    if(0 != myRank){
+        MPI_Isend(local, (myEnd-myStart)*n, MPI_UINT8_T, 0, 2*n, MPI_COMM_WORLD, &req1);
+        MPI_Wait(&req1, MPI_STATUS_IGNORE);
+    }  
+    
     if(0 == myRank){
         FILE *outfile = fopen(argv[2], "w");
-        for (int i = 0; i < n; ++i) {
-            for (int j = 0; j < n; ++j) {
-                fprintf(outfile, "%d%s",
-                (i == j ? 0 : d[i * n + j]),
-                (j == n - 1 ? " \n" : " ")
-                );
-            }
+        for (int i = myStart; i < myEnd; ++i) 
+                for (int j = 0; j < n; ++j) 
+                    fprintf(outfile, "%d%s",
+                        (i == j ? 0 : local[(i-myStart)*n + j]),
+                        (j == n - 1 ? " \n" : " ")
+                    );
+
+        for (int rank = 1; rank<size; rank++){
+            MPI_Wait(&requests[rank], MPI_STATUS_IGNORE);
+            for (int i = starts[rank]/n; i < ends[rank]/n; ++i) 
+                for (int j = 0; j < n; ++j) 
+                    fprintf(outfile, "%d%s",
+                        (i == j ? 0 : d[i * n + j]),
+                        (j == n - 1 ? " \n" : " ")
+                    );
+
+
         }
         free(d);
     }
