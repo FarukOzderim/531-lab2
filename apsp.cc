@@ -7,7 +7,7 @@
 #include <cstring>
 
 #define INF 200
-#define ALIGNMENT 8
+#define ALIGNMENT 64
 
 int main(int argc, char** argv) {
     int size, myRank, rc;
